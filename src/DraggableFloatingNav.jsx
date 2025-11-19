@@ -2,44 +2,113 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import './DraggableFloatingNav.css';
 
 function DraggableFloatingNav() {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [indicatorPos, setIndicatorPos] = useState({ left: 0, width: 0 });
-  const [hoveredItems, setHoveredItems] = useState([]);
+  // ==============================================
+  // 상태 관리 (State Management)
+  // ==============================================
+  const [activeIndex, setActiveIndex] = useState(0); // 현재 활성화된 메뉴 인덱스
+  const [isDragging, setIsDragging] = useState(false); // 드래그 중인지 여부
+  const [indicatorPos, setIndicatorPos] = useState({ left: 0, width: 0 }); // 인디케이터 위치/크기
+  const [hoveredItems, setHoveredItems] = useState([]); // 인디케이터와 겹치는 항목들
+  const [isAnimating, setIsAnimating] = useState(false); // 인디케이터 이동 애니메이션 중 여부
 
-  const navContainerRef = useRef(null);
-  const navRefs = useRef([]);
-  const indicatorRef = useRef(null);
-  const rafRef = useRef(null);
+  // ==============================================
+  // Ref 참조 (References)
+  // ==============================================
+  const navContainerRef = useRef(null); // 네비게이션 컨테이너
+  const navRefs = useRef([]); // 각 메뉴 항목 DOM 참조
+  const indicatorRef = useRef(null); // 인디케이터 DOM 참조
+  const rafRef = useRef(null); // requestAnimationFrame ID
+  const animationTimerRef = useRef(null); // 애니메이션 타이머 ID
+  const targetPosRef = useRef({ left: 0, width: 0 }); // 드래그 중 목표 위치
+  const dragRafRef = useRef(null); // 드래그 애니메이션 RAF ID
 
+  // ==============================================
+  // 메뉴 항목 데이터 (Navigation Items)
+  // ==============================================
   const navItems = useMemo(() => [
-    { name: '홈', icon: '🏠' },
-    { name: '학교소개', icon: '🏫' },
-    { name: '학사일정', icon: '📅' },
-    { name: '급식', icon: '🍱' },
-    { name: '공지사항', icon: '📢' }
+    {
+      name: '홈',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      )
+    },
+    {
+      name: '학교소개',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 21h18"/>
+          <path d="M5 21V7l8-4v18"/>
+          <path d="M19 21V11l-6-4"/>
+          <path d="M9 9v.01"/>
+          <path d="M9 12v.01"/>
+          <path d="M9 15v.01"/>
+          <path d="M9 18v.01"/>
+        </svg>
+      )
+    },
+    {
+      name: '학사일정',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      )
+    },
+    {
+      name: '급식',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 2v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V2"/>
+          <path d="M12 12v10"/>
+          <path d="M8 22h8"/>
+          <path d="M10 2v4"/>
+          <path d="M14 2v4"/>
+        </svg>
+      )
+    },
+    {
+      name: '공지사항',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          <line x1="9" y1="10" x2="15" y2="10"/>
+          <line x1="12" y1="7" x2="12" y2="13"/>
+        </svg>
+      )
+    }
   ], []);
 
-  // 로고 스타일 계산 (인라인 스타일을 함수로 분리)
+  // ==============================================
+  // 로고 스타일 계산 (Logo Style Calculation)
+  // 인디케이터 겹침에 따른 로고 투명도/크기 변화
+  // SVG는 currentColor를 사용하여 부모의 color를 자동 상속
+  // ==============================================
   const getLogoStyle = useCallback((isActive, overlapRatio, enhancedRatio) => {
     if (isActive) {
       return {
         opacity: 1,
-        filter: 'grayscale(0%) brightness(1.1)',
         transform: 'scale(1.2)'
       };
     }
 
     return {
-      opacity: Math.max(0.4, 0.4 + enhancedRatio * 0.6),
-      filter: `grayscale(${Math.max(0, 100 - enhancedRatio * 120)}%) brightness(${0.8 + enhancedRatio * 0.4})`,
+      opacity: Math.max(0.5, 0.5 + enhancedRatio * 0.5),
       transform: overlapRatio > 0
-        ? `scale(${1 + enhancedRatio * 0.25})`
+        ? `scale(${1 + enhancedRatio * 0.2})`
         : 'scale(1)'
     };
   }, []);
 
-  // 인디케이터와 겹치는 항목들 계산 (requestAnimationFrame으로 최적화)
+  // ==============================================
+  // 인디케이터 겹침 계산 (Overlap Calculation)
+  // requestAnimationFrame으로 성능 최적화
+  // ==============================================
   const calculateOverlappingItems = useCallback((indicatorLeft, indicatorWidth) => {
     // 이전 프레임 취소
     if (rafRef.current) {
@@ -69,7 +138,10 @@ function DraggableFloatingNav() {
     });
   }, []);
 
-  // 인디케이터 위치 업데이트
+  // ==============================================
+  // 인디케이터 위치 업데이트 (Indicator Position Update)
+  // 클릭이나 탭으로 메뉴 변경 시 호출
+  // ==============================================
   const updateIndicatorPosition = useCallback((index) => {
     const element = navRefs.current[index];
     if (element) {
@@ -79,6 +151,16 @@ function DraggableFloatingNav() {
       };
       setIndicatorPos(newPos);
       calculateOverlappingItems(newPos.left, newPos.width);
+
+      // 이전 애니메이션 타이머 취소 (여러 번 클릭 시 겹침 방지)
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+      }
+
+      // 인디케이터 이동 시 출렁임 애니메이션 활성화
+      setIsAnimating(true);
+      // 애니메이션 지속 시간 후 비활성화 (CSS transition과 동기화: 1.2초)
+      animationTimerRef.current = setTimeout(() => setIsAnimating(false), 1200);
     }
   }, [calculateOverlappingItems]);
 
@@ -105,18 +187,29 @@ function DraggableFloatingNav() {
     ).index;
   }, [activeIndex]);
 
-  // 마우스 드래그 시작
+  // ==============================================
+  // 드래그 시작 핸들러 (Drag Start Handlers)
+  // 드래그 시작 시 출렁임 애니메이션 비활성화 및 목표 위치 초기화
+  // ==============================================
   const handleMouseDown = (e) => {
     e.preventDefault();
     setIsDragging(true);
+    setIsAnimating(false); // 드래그 중에는 출렁임 애니메이션 비활성화
+    // 목표 위치를 현재 위치로 초기화
+    targetPosRef.current = { ...indicatorPos };
   };
 
-  // 터치 드래그 시작
   const handleTouchStart = (e) => {
     setIsDragging(true);
+    setIsAnimating(false); // 드래그 중에는 출렁임 애니메이션 비활성화
+    // 목표 위치를 현재 위치로 초기화
+    targetPosRef.current = { ...indicatorPos };
   };
 
-  // 드래그 중
+  // ==============================================
+  // 드래그 중 목표 위치 설정 (Set Target Position During Drag)
+  // 직접 인디케이터를 움직이지 않고 목표 위치만 설정
+  // ==============================================
   const handleMove = (clientX) => {
     if (!isDragging) return;
 
@@ -132,13 +225,11 @@ function DraggableFloatingNav() {
     const maxLeft = container.offsetWidth - indicatorWidth;
     newLeft = Math.max(0, Math.min(newLeft, maxLeft));
 
-    setIndicatorPos(prev => ({
-      ...prev,
-      left: newLeft
-    }));
-
-    // 드래그 중 겹치는 항목 계산
-    calculateOverlappingItems(newLeft, indicatorWidth);
+    // 목표 위치만 설정 (실제 이동은 useEffect의 RAF에서 처리)
+    targetPosRef.current = {
+      left: newLeft,
+      width: indicatorWidth
+    };
   };
 
   // 마우스 이동
@@ -183,9 +274,22 @@ function DraggableFloatingNav() {
     handleDragEnd(e.changedTouches[0].clientX);
   };
 
-  // 항목 클릭
+  // ==============================================
+  // 항목 클릭 핸들러 (Item Click Handler)
+  // 더블클릭 방지를 위한 debounce 추가
+  // 빠른 클릭 시 이전 타이머를 취소하고 새로운 애니메이션 시작
+  // ==============================================
+  const lastClickTimeRef = useRef(0);
+
   const handleItemClick = (index) => {
     if (isDragging) return;
+
+    // 더블클릭 방지: 200ms 이내 연속 클릭 무시
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 200) {
+      return;
+    }
+    lastClickTimeRef.current = now;
 
     setActiveIndex(index);
     updateIndicatorPosition(index);
@@ -213,11 +317,66 @@ function DraggableFloatingNav() {
     return () => window.removeEventListener('resize', handleResize);
   }, [activeIndex, updateIndicatorPosition]);
 
-  // cleanup: 컴포넌트 언마운트 시 RAF 취소
+  // ==============================================
+  // 드래그 중 부드러운 애니메이션 (Smooth Drag Animation)
+  // 속도 제한을 적용하여 자연스러운 움직임 구현
+  // ==============================================
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const MAX_SPEED = 7; // 프레임당 최대 이동 거리 (px) - 낮을수록 느림
+    const LERP_FACTOR = 0.15; // 보간 계수 (0~1, 낮을수록 부드럽고 느림)
+
+    const animate = () => {
+      setIndicatorPos(currentPos => {
+        const targetLeft = targetPosRef.current.left;
+        const currentLeft = currentPos.left;
+
+        // 목표까지의 거리
+        const distance = targetLeft - currentLeft;
+
+        // Lerp (Linear Interpolation) - 부드러운 감속 효과
+        let movement = distance * LERP_FACTOR;
+
+        // 최대 속도 제한
+        if (Math.abs(movement) > MAX_SPEED) {
+          movement = Math.sign(movement) * MAX_SPEED;
+        }
+
+        const newLeft = currentLeft + movement;
+
+        // 겹치는 항목 계산
+        calculateOverlappingItems(newLeft, currentPos.width);
+
+        return {
+          ...currentPos,
+          left: newLeft
+        };
+      });
+
+      dragRafRef.current = requestAnimationFrame(animate);
+    };
+
+    dragRafRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (dragRafRef.current) {
+        cancelAnimationFrame(dragRafRef.current);
+      }
+    };
+  }, [isDragging, calculateOverlappingItems]);
+
+  // cleanup: 컴포넌트 언마운트 시 RAF 및 타이머 취소
   useEffect(() => {
     return () => {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
+      }
+      if (dragRafRef.current) {
+        cancelAnimationFrame(dragRafRef.current);
+      }
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
       }
     };
   }, []);
@@ -240,17 +399,19 @@ function DraggableFloatingNav() {
   }, [isDragging, indicatorPos]);
 
   return (
-    <div className="draggable-nav-wrapper">
+    <div className={`draggable-nav-wrapper ${isDragging ? 'is-dragging' : ''}`}>
       <nav className="draggable-floating-nav">
         <div className="nav-container" ref={navContainerRef}>
           {/* 애플 리퀴드 글래스 인디케이터 */}
-          <div 
+          <div
             ref={indicatorRef}
-            className={`floating-indicator ${isDragging ? 'dragging' : ''}`}
+            className={`floating-indicator ${isDragging ? 'dragging' : ''} ${isAnimating ? 'wobbling' : ''}`}
             style={{
               left: `${indicatorPos.left}px`,
               width: `${indicatorPos.width}px`,
-              transition: isDragging ? 'none' : 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
+              transition: isDragging
+                ? 'none' // 드래그 중에는 JS가 완전히 제어
+                : 'all 0.9s cubic-bezier(0.23, 1, 0.32, 1)'
             }}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
