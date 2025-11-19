@@ -324,7 +324,7 @@ function DraggableFloatingNav() {
   useEffect(() => {
     if (!isDragging) return;
 
-    const MAX_SPEED = 7; // 프레임당 최대 이동 거리 (px) - 낮을수록 느림
+    const MAX_SPEED = 8; // 프레임당 최대 이동 거리 (px) - 낮을수록 느림
     const LERP_FACTOR = 0.15; // 보간 계수 (0~1, 낮을수록 부드럽고 느림)
 
     const animate = () => {
