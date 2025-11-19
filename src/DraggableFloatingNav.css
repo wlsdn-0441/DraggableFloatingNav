@@ -5,6 +5,8 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
+  /* 좌우 여백 추가 */
+  max-width: calc(100% - 40px);
 }
 
 .draggable-floating-nav {
@@ -14,7 +16,8 @@
   backdrop-filter: blur(1px);
   -webkit-backdrop-filter: blur(1px);
   border-radius: 50px;
-  padding: 8px;
+  /* 네비게이션 바 내부 여백 축소 */
+  padding: 6px;
   /* 유리 느낌의 그림자 */
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.1),
@@ -407,13 +410,14 @@
   z-index: 5;
   flex: 1;
   min-width: 0;
-  padding: 32px 20px 24px;
+  /* 네비게이션 크기 축소 (상하 더 축소) */
+  padding: 20px 16px 16px;
   background: transparent;
   border: none;
   border-radius: 40px;
   /* 라이트모드 기본 블랙 컬러 */
   color: #000 !important;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -432,13 +436,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  /* 아이콘-텍스트 간격 축소 */
+  gap: 3px;
 }
 
 .nav-item-logo {
-  /* SVG 아이콘 크기 설정 */
-  width: 24px;
-  height: 24px;
+  /* SVG 아이콘 크기 축소 */
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -488,26 +493,30 @@
 @media (max-width: 768px) {
   .draggable-nav-wrapper {
     bottom: 10px;
+    /* 모바일 좌우 여백 */
+    max-width: calc(100% - 20px);
   }
 
   .draggable-floating-nav {
-    padding: 6px;
+    /* 모바일 내부 여백 축소 */
+    padding: 5px;
     border-radius: 40px;
   }
 
   .nav-item {
-    padding: 28px 16px 20px;
-    font-size: 15px;
+    /* 모바일 네비게이션 크기 축소 (상하 더 축소) */
+    padding: 16px 12px 12px;
+    font-size: 14px;
   }
 
   .nav-item-logo {
     /* 모바일에서 SVG 아이콘 크기 조정 */
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
   }
 
   .nav-item-content {
-    gap: 4px;
+    gap: 2px;
   }
 
   .floating-indicator {
