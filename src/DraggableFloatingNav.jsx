@@ -320,11 +320,13 @@ function DraggableFloatingNav() {
   // ==============================================
   // 드래그 중 부드러운 애니메이션 (Smooth Drag Animation)
   // 속도 제한을 적용하여 자연스러운 움직임 구현
+  // 모바일과 데스크탑에서 다른 속도 적용
   // ==============================================
   useEffect(() => {
     if (!isDragging) return;
 
-    const MAX_SPEED = 8; // 프레임당 최대 이동 거리 (px) - 낮을수록 느림
+    // 모바일에서는 더 빠른 속도로 설정 (화면 크기가 작아 느리게 느껴지는 것 보정)
+    const MAX_SPEED = window.innerWidth <= 768 ? 10 : 7; // 프레임당 최대 이동 거리 (px)
     const LERP_FACTOR = 0.15; // 보간 계수 (0~1, 낮을수록 부드럽고 느림)
 
     const animate = () => {
